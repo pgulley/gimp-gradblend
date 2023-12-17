@@ -4,6 +4,8 @@
 from gimpfu import *
 from gimpenums import *
 import random
+from file_names import pp_name
+import os
 
 """
 Ok cool! This works!
@@ -37,12 +39,19 @@ ModeOptions = [
 ]
 
 
+path = "Projects/gimp-gradblend/output/"
+
 class GradGenerator():
 	def __init__(self, img_size, num_layers):
 		
 		self.img_size = img_size
 		self.img = gimp.Image(img_size, img_size)
 		self.num_layers = num_layers
+		self.name = pp_name()
+		self.path = path+self.name
+		if not os.path.exists(self.path):
+			os.makedirs(self.path)
+
 
 	def make_layer(self):
 		layer = gimp.Layer(self.img, "1", self.img_size, self.img_size)
@@ -65,7 +74,6 @@ class GradGenerator():
 
 		#Pick layer mode
 		mode = random.choice(ModeOptions)
-		print(mode)
 		layer.mode = mode
 
 	def generate(self):
@@ -75,9 +83,24 @@ class GradGenerator():
 		gimp.Display(self.img)
 
 
+	def save(self):
+		xcf_name = self.path+"/"+self.name+".xcf"
+		self.img.filename = xcf_name
+		pdb.gimp_xcf_save(0, self.img, None, xcf_name, xcf_name)
+
+	def export(self):
+		self.export_name = self.path+"/"+self.name+".png"
+		new_img = pdb.gimp_image_duplicate(self.img)
+		layer = pdb.gimp_image_merge_visible_layers(new_img, CLIP_TO_IMAGE)
+		pdb.gimp_file_save(new_img, layer, self.export_name, '?')
+		pdb.gimp_image_delete(new_img)
+
+
 def pgulley_basic_generator(img_size, num_layers):
 	g = GradGenerator(img_size, num_layers)
 	g.generate()
+	g.save()
+	g.export()
 	return g.img
 
 
