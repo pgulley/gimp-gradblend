@@ -80,7 +80,9 @@ class ImageContextManager():
 			self.img.add_layer(layer)
 		else:
 			layer = self.img.layers[i]
-		
+		#reset the layer at every render
+		pdb.gimp_drawable_edit_clear(layer)
+
 		l_def = self.layers[i]
 
 		grad = l_def["grad"]
@@ -117,7 +119,7 @@ class ImageContextManager():
 
 
 class ImageAnimator():
-	def __init__(self, img_size, num_layers,steps=60):
+	def __init__(self, img_size, num_layers,steps=100):
 		self.img_size = img_size
 		self.num_layers = num_layers
 		self.name = pp_name()
