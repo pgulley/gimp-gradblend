@@ -6,6 +6,7 @@ from gimpenums import *
 import random
 from file_names import pp_name
 import os
+import traceback
 
 """
 Ok cool! This works!
@@ -103,6 +104,7 @@ class ImageContextManager():
 		xcf_name = self.path+self.name+".xcf"
 		self.img.filename = xcf_name
 		pdb.gimp_xcf_save(0, self.img, None, xcf_name, xcf_name)
+		self.img.clean_all()
 
 	def export(self, suffix="0"):
 		suffix = str(suffix)
@@ -115,11 +117,13 @@ class ImageContextManager():
 
 
 class ImageAnimator():
-	def __init__(self, img_size, num_layers,steps=10):
+	def __init__(self, img_size, num_layers,steps=60):
 		self.img_size = img_size
 		self.num_layers = num_layers
 		self.name = pp_name()
 		self.path = path+self.name+"/"
+		self.gif_name = self.path+self.name+".gif"
+		self.xcf_name = self.path+self.name+"-gif.xcf"
 
 		self.img = ImageContextManager(img_size, num_layers, self.name)
 		self.img.render_image()
@@ -130,6 +134,7 @@ class ImageAnimator():
 		self.anim_layer = random.choice(range(num_layers))
 		self.anim_param = "grad_end"
 		
+
 		self.step = 0
 		self.max_steps = steps
 
@@ -149,6 +154,7 @@ class ImageAnimator():
 		
 	def collate_gif(self):
 		self.anim_img = gimp.Image(self.img_size, self.img_size)
+		self.anim_img.filename = self.xcf_name
 		self.frames = [p for p in os.listdir(self.path) if ".png" in p]
 		print("loading "+str(len(self.frames))+" frames")
 		self.frames.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
@@ -157,21 +163,28 @@ class ImageAnimator():
 			layer = pdb.gimp_file_load_layer(self.anim_img, self.path+f)
 			self.anim_img.add_layer(layer)
 		gimp.Display(self.anim_img)
+		pdb.gimp_xcf_save(0, self.anim_img, None, self.xcf_name, self.xcf_name)
 
 	def save_gif(self):
 		self.collate_gif()
-		gifname = self.path+self.name+".gif"
-		pdb.file_gif_save2(self.anim_img, self.anim_img.layers[-1], gifname, gifname,
-			0, 1, 100, 0, 1, 0, 0)
+		
+
+		##from chatgpt
+		image = pdb.gimp_image_duplicate(self.anim_img)
+		layers = image.layers
+		
+		pdb.gimp_image_convert_indexed(image, NO_DITHER, MAKE_PALETTE, 256, False, False, "")
+		pdb.file_gif_save(image, layers[0], self.gif_name, self.gif_name, 0, 1, 100, 0)
+		
+
+
 
 
 def pgulley_basic_animator(img_size, num_layers):
-	a = ImageAnimator(img_size, num_layers)
-	
+	a = ImageAnimator(img_size, num_layers)	
 	a.play()
-
 	a.save_gif()
-	return a.Image.img
+	return a.img.img
 
 
 
