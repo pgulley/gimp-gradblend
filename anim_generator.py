@@ -5,8 +5,10 @@ from gimpfu import *
 from gimpenums import *
 import random
 from file_names import pp_name
+from animation_drivers import PositionDriver, OpacityDriver
+from data import index
 import os
-import traceback
+
 
 """
 Ok cool! This works!
@@ -38,6 +40,12 @@ ModeOptions = [
 	LAYER_MODE_LUMINANCE, LAYER_MODE_HSV_VALUE
 ]
 
+
+AnimParamOptions = [
+	("grad_end.0",PositionDriver), ("grad_end.1",PositionDriver),# ("grad_start.0",PositionDriver), ("grad_start.1",PositionDriver),
+	("opacity", OpacityDriver)
+]
+
 def keypoints(img_size):
 	opts = [0, img_size * .25, img_size*.5, img_size*.75, img_size]
 	return [random.choice(opts), random.choice(opts)]
@@ -45,6 +53,7 @@ def keypoints(img_size):
 
 
 path = "Projects/gimp-gradblend/output/"
+
 
 class ImageContextManager():
 	def __init__(self, img_size, num_layers, name):
@@ -58,7 +67,7 @@ class ImageContextManager():
 		if not os.path.exists(self.path):
 			os.makedirs(self.path)
 
-		self.layers = {i: self.init_layer() for i in range(self.num_layers)}
+		self.layers = index({i: self.init_layer() for i in range(self.num_layers)})
 		[self.render_layer(i, init=True) for i in range(self.num_layers)]
 
 
@@ -70,7 +79,8 @@ class ImageContextManager():
 			"grad_shape": random.choice(GradientShapeOptions),
 			"grad_start": keypoints(self.img_size),
 			"grad_end": [r,r],
-			"mode": random.choice(ModeOptions)
+			"mode": random.choice(ModeOptions),
+			"opacity":100.0 #Not nessecarily!
 		}
 		return layer_def
 
@@ -95,6 +105,9 @@ class ImageContextManager():
 
 		mode = l_def["mode"]
 		layer.mode = mode
+		opacity = l_def["opacity"]
+		opacity = max(0.0, min(opacity, 100.0))
+		layer.opacity = opacity
 
 	def render_image(self):
 		[self.render_layer(i) for i in range(self.num_layers)]
@@ -112,8 +125,9 @@ class ImageContextManager():
 		suffix = str(suffix)
 		self.export_name = self.path+self.name+"-"+suffix+".png"
 		new_img = pdb.gimp_image_duplicate(self.img)
-		layer = pdb.gimp_image_merge_visible_layers(new_img, CLIP_TO_IMAGE)
-		pdb.gimp_file_save(new_img, layer, self.export_name, '?')
+		new_img.flatten()
+		#layer = pdb.gimp_image_merge_visible_layers(new_img, CLIP_TO_IMAGE)
+		pdb.gimp_file_save(new_img, new_img.layers[0], self.export_name, '?')
 		pdb.gimp_image_delete(new_img)
 
 
@@ -125,6 +139,11 @@ class ImageAnimator():
 		self.name = pp_name()
 		self.path = path+self.name+"/"
 		self.gif_name = self.path+self.name+".gif"
+		self.gif_root_name =  path+"gifs/"+self.name+".gif"
+
+		if not os.path.exists(path+"gifs/"):
+			os.makedirs(path+"gifs/")
+
 		self.xcf_name = self.path+self.name+"-gif.xcf"
 
 		self.img = ImageContextManager(img_size, num_layers, self.name)
@@ -132,20 +151,39 @@ class ImageAnimator():
 		self.img.show_image()
 		self.img.save()
 
-		#For now we just pick one random layer to animate
-		self.anim_layer = random.choice(range(num_layers))
-		self.anim_param = "grad_end"
-		
-
 		self.step = 0
 		self.max_steps = steps
+
+		self.get_drivers()
+
+	#Struggling with abstraction here...
+	def get_drivers(self):
+		num_drivers = random.randint(1,int(self.num_layers*1.5))
+		#pick WITH REPLACEMENT
+		anim_layers = [random.choice(range(self.num_layers)) for k in range(num_drivers)]
+
+		self.drivers = []
+		ps = []
+		for l in anim_layers:
+			p, d = random.choice(AnimParamOptions)
+			p_string = str(l)+"."+p
+			while p_string in ps:
+				p, d = random.choice(AnimParamOptions)
+				p_string = str(l)+"."+p
+			ps.append(p_string)
+			start_value = self.img.layers.find(p_string)
+			driver = d(start_value, self.img_size, self.max_steps)
+			self.drivers.append((p_string, driver))
+		
 
 	def export(self):
 		self.img.export(suffix=self.step)
 
 	#Super simple animation, just increment one value...
 	def take_step(self):
-		self.img.layers[self.anim_layer][self.anim_param][0] += 1
+		for param, driver in self.drivers:
+			driver.step()
+			self.img.layers.assign(param, driver.val)
 		self.img.render_image()
 		self.export()
 
@@ -158,6 +196,7 @@ class ImageAnimator():
 		self.anim_img = gimp.Image(self.img_size, self.img_size)
 		self.anim_img.filename = self.xcf_name
 		self.frames = [p for p in os.listdir(self.path) if ".png" in p]
+
 		print("loading "+str(len(self.frames))+" frames")
 		self.frames.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
 		for f in self.frames:
@@ -169,21 +208,20 @@ class ImageAnimator():
 
 	def save_gif(self):
 		self.collate_gif()
-		
-
-		##from chatgpt
 		image = pdb.gimp_image_duplicate(self.anim_img)
 		layers = image.layers
 		
 		pdb.gimp_image_convert_indexed(image, NO_DITHER, MAKE_PALETTE, 256, False, False, "")
 		pdb.file_gif_save(image, layers[0], self.gif_name, self.gif_name, 0, 1, 100, 0)
+		pdb.file_gif_save(image, layers[0], self.gif_root_name, self.gif_name, 0, 1, 100, 0)
+
 		
 
 
 
 
-def pgulley_basic_animator(img_size, num_layers):
-	a = ImageAnimator(img_size, num_layers)	
+def pgulley_animator(img_size, num_layers, steps):
+	a = ImageAnimator(img_size, num_layers, steps)	
 	a.play()
 	a.save_gif()
 	return a.img.img
@@ -191,17 +229,18 @@ def pgulley_basic_animator(img_size, num_layers):
 
 
 register(
-	"pgulley_basic_animator",
+	"pgulley_animator",
 	"Generate and animate a procedural demo image",
 	"Generate and animate a procedural demo image",
 	"pgulley","pgulley","2023",
-	"AnimateDemo",
+	"AnimateV2",
 	"*",
 	[
      (PF_INT, "img_size", "size of square image to generate", 500),
-     (PF_INT, "num_layers", "number of layers to generate", 5)
+     (PF_INT, "num_layers", "number of layers to generate", 5),
+     (PF_INT, "steps", "number of steps to animate", 10)
 	],[(PF_IMAGE, '', ', None')],
-	pgulley_basic_animator,
+	pgulley_animator,
 	"<Image>/pgulley/"
 	)
 

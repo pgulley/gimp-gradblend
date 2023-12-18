@@ -117,7 +117,7 @@ register(
      (PF_INT, "num_layers", "number of layers to generate", 5)
 	],[(PF_IMAGE, '', ', None')],
 	pgulley_basic_generator,
-	"<Image>/New/"
+	"<Image>/pgulley/"
 	)
 
 

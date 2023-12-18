@@ -32,19 +32,23 @@ gimp.pdb.plug_in_whirl_pinch(i, l2, 100, -0.5,0.5)
 - - Procedurally generates and saves an image based on variations of the above model 
 
 * pgulley_animator_generator
-- - abstracts generation from deterministic rendering- so we can change parameters to produce animations
+- - abstracts generation from deterministic rendering- so we can change parameters to produce 
+
+* anim_generator
+- - as above, but with a more flexible animation system and other tweaks-
 
 Future:
 
 Ok cool! This works!
 I think the next steps:
-* more animation options- and sequencing animations?
+
 * More effects - adding kaliedoscopes, warps, color fuckery in a procedural way
 * curate parameter options better- maybe some options are contextually more or less interesting? How to structure those choices?
 	* ex, some layer modes tend to be more destructive than interesting the closer they are to the top of an image
 	* ex, as above, but depending on if a layer is grayscale or rgb
 	* ex, some gradient shapes work best with certain position generators
-
+	* Already sort of doing something like this with the animation driver system- pairing certain parameters to different functions
+* sequencing animations, or scaling animation strength? 
 * save and reload python objects- re-run outputs with manual edits
 
 

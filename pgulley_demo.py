@@ -33,7 +33,7 @@ register(
      (PF_INT, "img_size", "size of square image to generate", None)
 	],[(PF_IMAGE, '', ', None')],
 	pgulley_demo,
-	"<Image>/New/"
+	"<Image>/pgulley/"
 	)
 
 

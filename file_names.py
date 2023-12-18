@@ -7,7 +7,8 @@ N = [
 "monkey", "delight", "love", "duck", "goose", "hate", "joy",
 "worm", "frost", "king", "queen", "light", "dark", "pine",
 "time", "noise", "music", "poem", "witch","wizard", "magic",
-"wish", "frog", "fire", "potion", "shoe", "cone", "sphere"
+"wish", "frog", "fire", "potion", "shoe", "cone", "sphere",
+"culture", "discourse", "wire", "map", "spell", "feeling"
 ]
 
 DET = [
